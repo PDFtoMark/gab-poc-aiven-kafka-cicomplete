@@ -49,4 +49,4 @@ jobs:
           echo "JAVA=$JAVA" >> $GITHUB_ENV
           echo "STATUS_CONTEXT=$STATUS_CONTEXT" >> $GITHUB_ENV
       - name: Show derived value
-        run: echo "artifact-name-derived matrix value: ${{ matrix.build-scan-name }}"
+        run: echo "matrix value was ${{ matrix.build-scan-name }}"
