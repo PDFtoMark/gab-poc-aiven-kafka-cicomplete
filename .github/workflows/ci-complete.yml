@@ -1,0 +1,52 @@
+name: CI Complete
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types:
+      - completed
+
+jobs:
+  get-build-scan-names:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      build-scan-names: ${{ steps.build-scan-names.outputs.build-scan-names }}
+    steps:
+      - name: List buildscan artifacts
+        id: build-scan-names
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          names=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /repos/$REPO/actions/runs/$RUN_ID/artifacts \
+            --jq '[.artifacts[] | select(.name | startswith("build-scan-")) | .name]')
+          echo "Found: $names"
+          echo "build-scan-names=$names" >> $GITHUB_OUTPUT
+
+  upload-build-scan:
+    needs: get-build-scan-names
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      DEMO_SECRET: ${{ secrets.POC_DEMO_SECRET }}
+    strategy:
+      fail-fast: false
+      matrix:
+        build-scan-name: ${{ fromJson(needs.get-build-scan-names.outputs.build-scan-names) }}
+    steps:
+      - name: Setup build scan info
+        run: |
+          BUILD_SCAN_NAME="${{ matrix.build-scan-name }}"
+          JAVA=$(echo "$BUILD_SCAN_NAME" | grep -oE '[0-9]+')
+          STATUS_CONTEXT="Java $JAVA"
+          [[ "$BUILD_SCAN_NAME" == *"-flaky"* ]] && STATUS_CONTEXT="$STATUS_CONTEXT / Flaky"
+          [[ "$BUILD_SCAN_NAME" == *"-new"* ]] && STATUS_CONTEXT="$STATUS_CONTEXT / New"
+
+          echo "JAVA=$JAVA" >> $GITHUB_ENV
+          echo "STATUS_CONTEXT=$STATUS_CONTEXT" >> $GITHUB_ENV
+      - name: Show derived value
+        run: echo "artifact-name-derived matrix value: ${{ matrix.build-scan-name }}"
